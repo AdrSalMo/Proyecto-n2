@@ -21,6 +21,13 @@ public class VentanaPrincipal extends JFrame {
     private CardLayout cardLayout;
     private JPanel panelCentral; 
     
+    private JLabel lblViajesValor;
+    private JLabel lblBusesValor;
+    
+    private JTable tablaConductores;
+    private DefaultTableModel modeloConductores;
+    private JLabel lblConductoresValor; // Para el contador en Inicio
+    
     private JButton crearBotonMenu(String texto) {
 
         JButton boton = new JButton(texto);
@@ -122,43 +129,35 @@ public class VentanaPrincipal extends JFrame {
     // ================= PANEL CENTRAL =================
 
     private void crearPanelPrincipal() {
-
         cardLayout = new CardLayout();
         panelCentral = new JPanel(cardLayout);
 
         panelCentral.add(crearPanelInicio(), "INICIO");
         panelCentral.add(crearPanelViajes(), "VIAJES");
         panelCentral.add(crearPanelBuses(), "BUSES");
+        panelCentral.add(crearPanelConductores(), "CONDUCTORES"); 
 
         add(panelCentral, BorderLayout.CENTER);
-
         cardLayout.show(panelCentral, "INICIO");
     }
     
     private JPanel crearPanelInicio() {
-
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(new Color(245, 245, 245));
 
-        // Título
-        JLabel titulo = new JLabel("Dashboard");
-        titulo.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        titulo.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        // Panel superior con las tarjetas
+        JPanel panelCards = new JPanel(new GridLayout(1, 2, 20, 0));
+        panelCards.setBackground(new Color(245, 245, 245));
+        panelCards.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        panel.add(titulo, BorderLayout.NORTH);
+        // Pasamos el tipo (1 para viajes, 2 para buses) para vincular los JLabels
+        panelCards.add(crearTarjeta("Total Viajes", String.valueOf(empresa.cantidadViajes()), 1));
+        panelCards.add(crearTarjeta("Buses Activos", String.valueOf(empresa.cantidadBuses()), 2));
 
-        // Contenedor principal
-        JPanel contenido = new JPanel(new GridLayout(2, 2, 15, 15));
-        contenido.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        contenido.setBackground(new Color(245, 245, 245));
+        panel.add(panelCards, BorderLayout.NORTH);
 
-        // Tarjetas
-        contenido.add(crearTarjeta("Viajes Hoy", "0"));
-        contenido.add(crearTarjeta("Buses Activos", "0"));
-        contenido.add(crearTarjeta("Conductores Disponibles", "0"));
-        contenido.add(crearProximosViajes());
-
-        panel.add(contenido, BorderLayout.CENTER);
+        // Panel de próximos viajes (opcional, puedes dejarlo vacío o con un mensaje)
+        panel.add(crearProximosViajes(), BorderLayout.CENTER);
 
         return panel;
     }
@@ -173,6 +172,7 @@ public class VentanaPrincipal extends JFrame {
         modeloTabla.addColumn("Destino");
         modeloTabla.addColumn("Horario");
         modeloTabla.addColumn("Precio");
+        modeloTabla.addColumn("Bus (Patente)"); // Nueva columna
 
         tablaViajes = new JTable(modeloTabla);
 
@@ -256,20 +256,19 @@ public class VentanaPrincipal extends JFrame {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(new Color(245, 245, 245));
 
+        // MODELO Y TABLA
         modeloBuses = new DefaultTableModel();
         modeloBuses.addColumn("Patente");
         modeloBuses.addColumn("Capacidad");
 
         tablaBuses = new JTable(modeloBuses);
 
-        // Estilo tabla
+        // Estilo tabla (Consistente con Java 8)
         tablaBuses.setRowHeight(25);
         tablaBuses.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-
         tablaBuses.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
         tablaBuses.getTableHeader().setBackground(new Color(30, 30, 30));
         tablaBuses.getTableHeader().setForeground(Color.WHITE);
-
         tablaBuses.setSelectionBackground(new Color(100, 150, 255));
         tablaBuses.setSelectionForeground(Color.WHITE);
         tablaBuses.setGridColor(new Color(220, 220, 220));
@@ -277,64 +276,144 @@ public class VentanaPrincipal extends JFrame {
         JScrollPane scroll = new JScrollPane(tablaBuses);
         scroll.setBorder(BorderFactory.createEmptyBorder());
 
-        // Título
+        // TÍTULO
         JLabel titulo = new JLabel("Gestión de Autobuses");
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 20));
         titulo.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
         panel.add(titulo, BorderLayout.NORTH);
-        
+
+        // CONTENEDOR TABLA
         JPanel contenedorTabla = new JPanel(new BorderLayout());
         contenedorTabla.setBackground(new Color(245, 245, 245));
         contenedorTabla.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
-
         contenedorTabla.add(scroll, BorderLayout.CENTER);
-
         panel.add(contenedorTabla, BorderLayout.CENTER);
 
-        // BOTÓN FLOTANTE
-        JPanel contenedorInferior = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 10));
-        contenedorInferior.setBackground(new Color(245, 245, 245));
+        // PANEL DE BOTONES (Siguiendo la línea estética de Viajes)
+        JPanel panelBotones = new JPanel(new BorderLayout());
+        panelBotones.setBackground(new Color(245, 245, 245));
+        panelBotones.setBorder(BorderFactory.createEmptyBorder(5, 15, 10, 15));
+
+        // IZQUIERDA: Acciones (Editar/Eliminar)
+        JPanel izquierda = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        izquierda.setBackground(new Color(245, 245, 245));
+
+        JButton btnEditarBus = crearBotonAccion("Editar Capacidad");
+        JButton btnEliminarBus = crearBotonAccion("Eliminar Bus");
+
+        izquierda.add(btnEditarBus);
+        izquierda.add(btnEliminarBus);
+
+        // DERECHA: Botón Flotante Agregar
+        JPanel derecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        derecha.setBackground(new Color(245, 245, 245));
 
         JButton btnAgregarBus = crearBotonFlotante("+");
         btnAgregarBus.setToolTipText("Agregar nuevo bus");
+        derecha.add(btnAgregarBus);
 
-        contenedorInferior.add(btnAgregarBus);
-        panel.add(contenedorInferior, BorderLayout.SOUTH);
+        // Unir paneles de botones
+        panelBotones.add(izquierda, BorderLayout.WEST);
+        panelBotones.add(derecha, BorderLayout.EAST);
+        panel.add(panelBotones, BorderLayout.SOUTH);
 
+        // CARGAR DATOS INICIALES
         cargarBuses();
 
+        // EVENTOS
         btnAgregarBus.addActionListener(e -> agregarBus());
+        btnEditarBus.addActionListener(e -> editarCapacidadBus());
+        btnEliminarBus.addActionListener(e -> eliminarBus()); // Asumiendo que implementarás eliminarBus()
 
         return panel;
     }
-    
+
     private JPanel crearPanelConductores() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBackground(new Color(245, 245, 245));
 
-        JLabel titulo = new JLabel("Gestión de Conductores");
-        titulo.setHorizontalAlignment(SwingConstants.CENTER);
+        // TÍTULO
+        JLabel titulo = new JLabel("Gestión de Personal: Conductores");
+        titulo.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        titulo.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 10));
         panel.add(titulo, BorderLayout.NORTH);
-    
+
+        // MODELO DE TABLA - Información útil para viajes
+        modeloConductores = new DefaultTableModel();
+        modeloConductores.addColumn("Rut/ID");
+        modeloConductores.addColumn("Nombre Completo");
+        modeloConductores.addColumn("Licencia"); // Importante: Clase A1, A2, etc.
+        modeloConductores.addColumn("Estado");   // Disponible, En Ruta, Licencia Médica
+        modeloConductores.addColumn("Bus Asignado");
+
+        tablaConductores = new JTable(modeloConductores);
+
+        // Aplicar el mismo estilo que tus otras tablas
+        estilizarTabla(tablaConductores);
+
+        JScrollPane scroll = new JScrollPane(tablaConductores);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+
+        JPanel contenedorTabla = new JPanel(new BorderLayout());
+        contenedorTabla.setBackground(new Color(245, 245, 245));
+        contenedorTabla.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        contenedorTabla.add(scroll, BorderLayout.CENTER);
+        panel.add(contenedorTabla, BorderLayout.CENTER);
+
+        // PANEL DE ACCIONES
+        JPanel panelBotones = new JPanel(new BorderLayout());
+        panelBotones.setBackground(new Color(245, 245, 245));
+        panelBotones.setBorder(BorderFactory.createEmptyBorder(5, 15, 10, 15));
+
+        JPanel izquierda = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        izquierda.setBackground(new Color(245, 245, 245));
+
+        JButton btnAsignarBus = crearBotonAccion("Asignar a Viaje");
+        JButton btnHistorial = crearBotonAccion("Ver Historial");
+        JButton btnEliminar = crearBotonAccion("Dar de Baja");
+
+        izquierda.add(btnAsignarBus);
+        izquierda.add(btnHistorial);
+        izquierda.add(btnEliminar);
+
+        JPanel derecha = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        derecha.setBackground(new Color(245, 245, 245));
+        JButton btnAgregar = crearBotonFlotante("+");
+        btnAgregar.setToolTipText("Contratar nuevo conductor");
+        derecha.add(btnAgregar);
+
+        panelBotones.add(izquierda, BorderLayout.WEST);
+        panelBotones.add(derecha, BorderLayout.EAST);
+        panel.add(panelBotones, BorderLayout.SOUTH);
+
         return panel;
     }
     
-    private JPanel crearTarjeta(String titulo, String valor) {
-
-        JPanel card = new JPanel();
-        card.setLayout(new BorderLayout());
+    private JPanel crearTarjeta(String titulo, String valor, int tipo) {
+        JPanel card = new JPanel(new BorderLayout());
         card.setBackground(Color.WHITE);
-        card.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(230, 230, 230), 1),
+            BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        ));
 
-        JLabel lblTitulo = new JLabel(titulo);
-        lblTitulo.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        JLabel lblTit = new JLabel(titulo);
+        lblTit.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblTit.setForeground(Color.GRAY);
 
-        JLabel lblValor = new JLabel(valor);
-        lblValor.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        JLabel lblVal = new JLabel(valor);
+        lblVal.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        lblVal.setForeground(Color.BLACK);
 
-        card.add(lblTitulo, BorderLayout.NORTH);
-        card.add(lblValor, BorderLayout.CENTER);
+        // Vinculamos la etiqueta a la variable de clase para poder actualizarla luego
+        if (tipo == 1) {
+            this.lblViajesValor = lblVal;
+        } else if (tipo == 2) {
+            this.lblBusesValor = lblVal;
+        }
+
+        card.add(lblTit, BorderLayout.NORTH);
+        card.add(lblVal, BorderLayout.CENTER);
 
         return card;
     }
@@ -350,17 +429,21 @@ public class VentanaPrincipal extends JFrame {
 
         JTextArea area = new JTextArea();
         area.setEditable(false);
-
         panel.add(titulo, BorderLayout.NORTH);
         panel.add(new JScrollPane(area), BorderLayout.CENTER);
-
+    
         return panel;
     }
 
     // ================= MÉTODOS =================
 
     private void cargarInicio() {
-
+        if (lblViajesValor != null) {
+            lblViajesValor.setText(String.valueOf(empresa.cantidadViajes()));
+        }
+        if (lblBusesValor != null) {
+            lblBusesValor.setText(String.valueOf(empresa.cantidadBuses()));
+        }
     }
     
     private void cargarTabla() {
@@ -371,7 +454,8 @@ public class VentanaPrincipal extends JFrame {
                     v.getId(),
                     v.getDestino(),
                     v.getHorario(),
-                    v.getPrecioPasaje()
+                    v.getPrecioPasaje(),
+                    (v.getBus() != null ? v.getBus().getPatente() : "N/A")
             });
         }
     }
@@ -388,7 +472,9 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private void cargarConductores() {
-        panelCentral.add(crearPanelConductores(), "CONDUCTORES");
+        modeloConductores.setRowCount(0);
+        // EJ
+        modeloConductores.addRow(new Object[]{"12.345.678-9", "Juan Pérez", "Clase A3", "Disponible", "BUS-101"});
     }
     
     private void agregarViaje() {
@@ -437,6 +523,53 @@ public class VentanaPrincipal extends JFrame {
         }
     }
     
+    private void editarCapacidadBus() {
+        int fila = tablaBuses.getSelectedRow();
+        if (fila == -1) {
+            JOptionPane.showMessageDialog(this, "Seleccione un bus de la tabla");
+            return;
+        }
+
+        String patente = (String) modeloBuses.getValueAt(fila, 0);
+        try {
+            String input = JOptionPane.showInputDialog(this, "Nueva capacidad para " + patente + ":", 
+                                                     modeloBuses.getValueAt(fila, 1));
+            if (input != null && !input.trim().isEmpty()) {
+                int nuevaCap = Integer.parseInt(input);
+
+                // Llama a la lógica de negocio y persiste el cambio
+                empresa.editarCapacidadBus(patente, nuevaCap); 
+
+                // Refresca la interfaz
+                cargarBuses();
+                cargarInicio(); 
+
+                JOptionPane.showMessageDialog(this, "Capacidad actualizada y guardada.");
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Ingrese un número válido.");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+        }
+    }
+    
+    private void eliminarBus() {
+        int fila = tablaBuses.getSelectedRow();
+        if (fila == -1) {
+            JOptionPane.showMessageDialog(this, "Seleccione un bus");
+            return;
+        }
+        String patente = (String) modeloBuses.getValueAt(fila, 0);
+        try {
+            empresa.eliminarBus(patente);
+            cargarBuses();
+            cargarInicio();
+            JOptionPane.showMessageDialog(this, "Bus eliminado correctamente");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
+        }
+    }
+    
     private void eliminarViaje() {
         int fila = tablaViajes.getSelectedRow();
 
@@ -459,7 +592,6 @@ public class VentanaPrincipal extends JFrame {
     
     private void editarViaje() {
         int fila = tablaViajes.getSelectedRow();
-
         if (fila == -1) {
             JOptionPane.showMessageDialog(this, "Seleccione un viaje");
             return;
@@ -468,18 +600,20 @@ public class VentanaPrincipal extends JFrame {
         int id = (int) modeloTabla.getValueAt(fila, 0);
 
         try {
-            String nuevoDestino = JOptionPane.showInputDialog("Nuevo destino:");
+            // Pedir todos los campos para permitir edición completa
+            String nuevoDestino = JOptionPane.showInputDialog("Nuevo destino:", modeloTabla.getValueAt(fila, 1));
+            String nuevoHorario = JOptionPane.showInputDialog("Nuevo horario:"); 
             String costoStr = JOptionPane.showInputDialog("Nuevo costo:");
             String precioStr = JOptionPane.showInputDialog("Nuevo precio:");
+            String nuevaPatente = JOptionPane.showInputDialog("Nueva Patente de Bus:");
 
             double costo = Double.parseDouble(costoStr);
             double precio = Double.parseDouble(precioStr);
 
-            empresa.editarViaje(id, nuevoDestino, costo, precio);
+            empresa.editarViaje(id, nuevoDestino, nuevoHorario, costo, precio, nuevaPatente);
 
             cargarTabla();
-
-            JOptionPane.showMessageDialog(this, "Viaje editado");
+            JOptionPane.showMessageDialog(this, "Viaje editado y guardado correctamente");
 
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
@@ -529,6 +663,17 @@ public class VentanaPrincipal extends JFrame {
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
         }
+    }
+    
+    private void estilizarTabla(JTable tabla) {
+        tabla.setRowHeight(30);
+        tabla.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        tabla.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
+        tabla.getTableHeader().setBackground(new Color(33, 37, 41));
+        tabla.getTableHeader().setForeground(Color.WHITE);
+        tabla.setSelectionBackground(new Color(52, 58, 64));
+        tabla.setGridColor(new Color(230, 230, 230));
+        tabla.setShowVerticalLines(false); // Estética más moderna
     }
     
     // ================= BOTONES =================
