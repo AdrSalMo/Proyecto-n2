@@ -12,7 +12,7 @@ public class Bus implements Serializable {
     private int capacidad;
     private ArrayList<Pasajero> pasajeros;
     private Conductor conductor;
-    private static final String PATRON_PATENTE = "BUS\\d{3}";
+
     // Constructor SIN conductor
     public Bus(String patente, int capacidad) throws DatosInvalidosException {
         validarDatos(patente, capacidad);
@@ -33,8 +33,8 @@ public class Bus implements Serializable {
 
     // ================= VALIDACIÓN =================
     private void validarDatos(String patente, int capacidad) throws DatosInvalidosException {
-        if (patente == null || !patente.matches(PATRON_PATENTE)) {
-            throw new DatosInvalidosException("Formato de patente inválido. Debe ser BUS seguido de 3 números (ej: BUS001)");
+        if (patente == null || patente.trim().isEmpty()) {
+            throw new DatosInvalidosException("La patente no puede estar vacía");
         }
         if (capacidad <= 0 || capacidad > 100) {
             throw new DatosInvalidosException("Capacidad inválida (1-100)");
@@ -61,6 +61,21 @@ public class Bus implements Serializable {
     // ================= SETTERS =================
     public void setConductor(Conductor conductor) {
         this.conductor = conductor;
+    }
+    
+    public void setCapacidad(int nuevaCapacidad) throws DatosInvalidosException {
+        // Validación de lógica de negocio
+        if (nuevaCapacidad < pasajeros.size()) {
+            throw new DatosInvalidosException("No se puede reducir la capacidad a " + nuevaCapacidad + 
+                " porque ya hay " + pasajeros.size() + " pasajeros en el bus.");
+        }
+
+        // Validación de rangos
+        if (nuevaCapacidad <= 0 || nuevaCapacidad > 100) {
+            throw new DatosInvalidosException("La capacidad debe estar entre 1 y 100.");
+        }
+
+        this.capacidad = nuevaCapacidad;
     }
 
     // ================= LÓGICA =================
