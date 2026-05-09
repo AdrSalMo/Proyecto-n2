@@ -2,12 +2,17 @@ package transporte.servicio;
 
 import transporte.modelo.*;
 import transporte.excepciones.*;
+import transporte.modelo.Viaje;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Collection; // Importante para getListaConductores
 import java.io.BufferedReader;
 import java.io.FileReader;
-
+import java.io.FileOutputStream;
+import java.io.ObjectOutputStream;
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
 
 public class Empresa {
 
@@ -15,12 +20,14 @@ public class Empresa {
     private ArrayList<Viaje> viajes;
     private HashMap<String, Bus> buses;
     private HashMap<String, ArrayList<Viaje>> viajesPorDestino;
+    private HashMap<String, Conductor> todosLosConductores; // Mapa maestro de conductores
 
     public Empresa(String nombre) {
         this.nombre = nombre;
         this.viajes = new ArrayList<>();
         this.buses = new HashMap<>();
-        viajesPorDestino = new HashMap<>();
+        this.viajesPorDestino = new HashMap<>();
+        this.todosLosConductores = new HashMap<>(); // Inicialización vital
     }
 
     // ================= GETTERS =================
@@ -44,7 +51,7 @@ public class Empresa {
     public int cantidadViajes() {
         return viajes.size();
     }
-    
+
     public HashMap<String, ArrayList<Viaje>> getViajesPorDestino() {
         return viajesPorDestino;
     }
@@ -61,7 +68,10 @@ public class Empresa {
 
     // ================= BUS =================
 
-    public void agregarBus(Bus b) {
+    public void agregarBus(Bus b) throws DatosInvalidosException {
+        if (buses.containsKey(b.getPatente())) {
+            throw new DatosInvalidosException("Ya existe un bus con la patente: " + b.getPatente());
+        }
         buses.put(b.getPatente(), b);
     }
 
@@ -81,29 +91,88 @@ public class Empresa {
             System.out.println("\nNo hay buses registrados");
             return;
         }
-
         System.out.println("\nLISTA DE BUSES");
         System.out.println(repetir("=", 80));
-
         for (Bus b : buses.values()) {
             System.out.println(b);
         }
-
         System.out.println(repetir("=", 80));
+    }
+    
+    public void editarCapacidadBus(String patente, int nuevaCapacidad) throws Exception {
+        // Buscamos el bus en el mapa de la empresa
+        Bus b = buscarBus(patente); 
+
+        if (b == null) {
+            throw new Exception("El bus con patente " + patente + " no existe.");
+        }
+
+        if (nuevaCapacidad <= 0) {
+            throw new Exception("La capacidad debe ser mayor a cero.");
+        }
+
+        // Aplicamos el cambio al objeto
+        b.setCapacidad(nuevaCapacidad);
+    }
+    
+    // version ventanaprincipal
+    public void editarViaje(int id, String destino, String horario, double costo, double precio, String patente) 
+            throws ViajeNoEncontradoException {
+
+        Viaje v = buscarViaje(id);
+
+        if (v == null) {
+            throw new ViajeNoEncontradoException("Viaje no encontrado con ID: " + id);
+        }
+
+        // Actualizamos solo si el usuario ingresó algo (no es null ni vacío)
+        if (destino != null && !destino.trim().isEmpty()) v.setDestino(destino);
+        if (horario != null && !horario.trim().isEmpty()) v.setHorario(horario);
+
+        // Solo actualiza si son valores válidos (mayores a 0)
+        if (costo >= 0) v.setCostoViaje(costo);
+        if (precio >= 0) v.setPrecioPasaje(precio);
+
+        // Lógica para cambiar el bus por su patente
+        if (patente != null && !patente.trim().isEmpty()) {
+            Bus nuevoBus = buscarBus(patente);
+            if (nuevoBus != null) {
+                v.setBus(nuevoBus);
+            }
+        }
+    }
+
+    // version main
+    public void editarViaje(int id, String destino, double costo, double precio) 
+            throws ViajeNoEncontradoException {
+        this.editarViaje(id, destino, null, costo, precio, null);
+    }
+
+    // ================= CONDUCTOR (CORREGIDO) =================
+    
+    public void contratarConductor(Conductor c) {
+        if (c != null && c.getRut() != null) {
+            todosLosConductores.put(c.getRut(), c);
+        }
+    }
+
+    public Collection<Conductor> getListaConductores() {
+        return todosLosConductores.values();
+    }
+    
+    public Conductor buscarConductor(String rut) {
+        return todosLosConductores.get(rut);
     }
 
     // ================= VIAJES =================
 
-    public void agregarViaje(Viaje v) {
-        viajes.add(v); // mantienes tu lista actual
-
-        String destino = v.getDestino();
-
-        if (!viajesPorDestino.containsKey(destino)) {
-            viajesPorDestino.put(destino, new ArrayList<>());
+    public void agregarViaje(Viaje v) throws DatosInvalidosException {
+        for (Viaje viajeExistente : viajes) {
+            if (viajeExistente.getId() == v.getId()) {
+                throw new DatosInvalidosException("Ya existe un viaje con el ID: " + v.getId());
+            }
         }
-
-        viajesPorDestino.get(destino).add(v);
+        viajes.add(v);
     }
 
     public Viaje buscarViaje(int id) {
@@ -115,142 +184,25 @@ public class Empresa {
 
     public void eliminarViaje(int id) throws ViajeNoEncontradoException {
         Viaje v = buscarViaje(id);
-
-        if (v == null) {
-            throw new ViajeNoEncontradoException("Viaje no encontrado");
-        }
-
+        if (v == null) throw new ViajeNoEncontradoException();
         viajes.remove(v);
+        guardarDatos("datos.dat");
     }
 
-    public void mostrarViajes() {
-        if (viajes.isEmpty()) {
-            System.out.println("\nNo hay viajes registrados");
-            return;
-        }
-
-        System.out.println("\nLISTA DE VIAJES");
-        System.out.println(repetir("=", 100));
-
-        for (Viaje v : viajes) {
-            System.out.println(v);
-        }
-
-        System.out.println(repetir("=", 100));
-    }
-
-    public void mostrarViajesPorDestino(String destino) {
-        if (viajesPorDestino.containsKey(destino)) {
-            for (Viaje v : viajesPorDestino.get(destino)) {
-                System.out.println(v);
-            }
-        } else {
-            System.out.println("No hay viajes a ese destino.");
-        }
-    }    
-
-    public void editarViaje(int id, String destino, double costo, double precio)
-            throws ViajeNoEncontradoException {
-
-        Viaje v = buscarViaje(id);
-
-        if (v == null) {
-            throw new ViajeNoEncontradoException("Viaje no encontrado");
-        }
-
-        if (destino != null && !destino.trim().isEmpty()) {
-            v.setDestino(destino);
-        }
-
-        if (costo >= 0) {
-            v.setCostoViaje(costo);
-        }
-
-        if (precio >= 0) {
-            v.setPrecioPasaje(precio);
-        }
-    }
-
-    // ================= REASIGNACIÓN =================
-
-    public void reasignarPasajeros(int idViaje) throws ViajeNoEncontradoException {
-
-        Viaje original = buscarViaje(idViaje);
-
-        if (original == null) {
-            throw new ViajeNoEncontradoException("Viaje no encontrado");
-        }
-
-        if (original.esRentable()) {
-            System.out.println("El viaje ya es rentable");
-            return;
-        }
-
-        boolean reasignado = false;
-
-        for (Pasajero p : new ArrayList<>(original.getPasajeros())) {
-
-            Viaje mejorViaje = null;
-
-            for (Viaje v : viajes) {
-
-                if (v != original &&
-                    v.getDestino().equalsIgnoreCase(original.getDestino()) &&
-                    !v.getHorario().equalsIgnoreCase(original.getHorario())) {
-
-                    if (v.getBus().getCapacidadDisponible() > 0) {
-
-                        if (v.esRentable()) {
-                            mejorViaje = v;
-                            break;
-                        }
-
-                        if (mejorViaje == null ||
-                            v.getPrecioPasaje() > mejorViaje.getPrecioPasaje()) {
-                            mejorViaje = v;
-                        }
-                    }
-                }
-            }
-
-            if (mejorViaje != null) {
-                try {
-                    mejorViaje.agregarPasajero(p);
-                    original.eliminarPasajero(p);
-                    reasignado = true;
-                } catch (BusLlenoException e) {
-                    // ignorar
-                }
-            }
-        }
-
-        if (reasignado) {
-            System.out.println("Reasignación realizada");
-
-            if (original.getPasajeros().isEmpty()) {
-                viajes.remove(original);
-                System.out.println("Viaje eliminado por quedar vacío");
-            }
-
-        } else {
-            System.out.println("No se pudo reasignar pasajeros");
-        }
-    }
-
-    // ================= CSV =================
+    // ================= CSV (CORREGIDO) =================
 
     public void cargarDesdeCSV() {
         try {
             buses.clear();
             viajes.clear();
+            todosLosConductores.clear(); // Limpiar también conductores
 
             cargarBuses("buses.csv");
             cargarConductores("conductores.csv");
             cargarViajes("viajes.csv");
             cargarPasajeros("pasajeros.csv");
 
-            System.out.println("Datos cargados correctamente");
-
+            System.out.println("Datos cargados correctamente desde CSV");
         } catch (Exception e) {
             System.out.println("Error al cargar CSV: " + e.getMessage());
         }
@@ -259,55 +211,46 @@ public class Empresa {
     private void cargarBuses(String archivo) throws Exception {
         BufferedReader br = new BufferedReader(new FileReader(archivo));
         String linea;
-
-        br.readLine();
-
+        br.readLine(); 
         while ((linea = br.readLine()) != null) {
             String[] d = linea.split(",");
-
             String patente = d[0];
             int capacidad = Integer.parseInt(d[1]);
-
             agregarBus(new Bus(patente, capacidad));
         }
-
         br.close();
     }
 
     private void cargarConductores(String archivo) throws Exception {
         BufferedReader br = new BufferedReader(new FileReader(archivo));
         String linea;
-
-        br.readLine();
-
+        br.readLine(); 
         while ((linea = br.readLine()) != null) {
             String[] d = linea.split(",");
-
             String rut = d[0];
             String nombre = d[1];
             String patente = d[2];
 
             Conductor c = new Conductor(nombre, rut, patente);
+            
+            // 1. Registrar en el mapa global de la empresa
+            contratarConductor(c);
 
+            // 2. Vincular con el bus si existe
             Bus bus = buscarBus(patente);
-
             if (bus != null) {
                 bus.setConductor(c);
             }
         }
-
         br.close();
     }
 
     private void cargarViajes(String archivo) throws Exception {
         BufferedReader br = new BufferedReader(new FileReader(archivo));
         String linea;
-
         br.readLine();
-
         while ((linea = br.readLine()) != null) {
             String[] d = linea.split(",");
-
             int id = Integer.parseInt(d[0]);
             String destino = d[1];
             String horario = d[2];
@@ -316,50 +259,40 @@ public class Empresa {
             String patente = d[5];
 
             Bus bus = buscarBus(patente);
-
             if (bus != null) {
                 agregarViaje(new Viaje(id, destino, horario, costo, precio, bus));
             }
         }
-
         br.close();
     }
 
     private void cargarPasajeros(String archivo) throws Exception {
         BufferedReader br = new BufferedReader(new FileReader(archivo));
         String linea;
-
         br.readLine();
-
         while ((linea = br.readLine()) != null) {
             String[] d = linea.split(",");
-
             int idViaje = Integer.parseInt(d[0]);
             String nombre = d[1];
             String rut = d[2];
             int idP = Integer.parseInt(d[3]);
 
             Viaje v = buscarViaje(idViaje);
-
             if (v != null) {
                 v.agregarPasajero(nombre, rut, idP);
             }
         }
-
         br.close();
     }
 
-    // ================= SERIALIZACIÓN =================
+    // ================= SERIALIZACIÓN (CORREGIDO) =================
 
     public void guardarDatos(String archivo) {
-        try (java.io.ObjectOutputStream oos =
-             new java.io.ObjectOutputStream(new java.io.FileOutputStream(archivo))) {
-
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(archivo))) {
             oos.writeObject(viajes);
             oos.writeObject(buses);
-
-            System.out.println("Datos guardados correctamente");
-
+            oos.writeObject(todosLosConductores); // Guardar conductores independientes
+            System.out.println("Datos guardados en " + archivo);
         } catch (Exception e) {
             System.out.println("Error al guardar: " + e.getMessage());
         }
@@ -367,21 +300,14 @@ public class Empresa {
 
     @SuppressWarnings("unchecked")
     public void cargarDatos(String archivo) {
-        try (java.io.ObjectInputStream ois =
-            new java.io.ObjectInputStream(new java.io.FileInputStream(archivo))) {
-
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(archivo))) {
             viajes = (ArrayList<Viaje>) ois.readObject();
             buses = (HashMap<String, Bus>) ois.readObject();
-
-            System.out.println("Datos cargados correctamente");
-            System.out.println("Viajes cargados: " + viajes.size());
-            System.out.println("Buses cargados: " + buses.size());
-
+            todosLosConductores = (HashMap<String, Conductor>) ois.readObject(); // Cargar conductores
+            
+            System.out.println("Datos cargados desde binario");
         } catch (Exception e) {
-            System.out.println("Error al cargar: " + e.getMessage());
+            System.out.println("Error al cargar binario: " + e.getMessage());
         }
-       
     }
-    
-
 }
