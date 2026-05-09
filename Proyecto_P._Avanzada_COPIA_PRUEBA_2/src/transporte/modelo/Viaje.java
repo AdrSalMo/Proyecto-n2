@@ -15,22 +15,23 @@ public class Viaje implements Serializable {
     private ArrayList<Pasajero> pasajeros;
     private Bus bus;
 
-    
-    public Viaje(int id, String destino, String horario, double costo, double precio, Bus bus) throws DatosInvalidosException { 
-    
-    // Se valida aquí para que el catch de la UI tenga sentido
-    if (id <= 0) throw new DatosInvalidosException("El ID del viaje debe ser positivo.");
-    if (costo < 0 || precio < 0) throw new DatosInvalidosException("Los montos no pueden ser negativos.");
-    if (destino == null || destino.trim().isEmpty()) throw new DatosInvalidosException("El destino es obligatorio.");
+        // Agrega "throws DatosInvalidosException" al final de la firma del constructor
+    public Viaje(int id, String destino, String horario, double costo, double precio, Bus bus) 
+           throws DatosInvalidosException { 
 
-    this.id = id;
-    this.destino = destino;
-    this.costoViaje = costo;
-    this.precioPasaje = precio;
-    this.bus = bus;
-    this.horario = horario;
-    this.pasajeros = new ArrayList<>();
-}
+        // Es buena práctica validar aquí para que el catch de la UI tenga sentido
+        if (id <= 0) throw new DatosInvalidosException("El ID del viaje debe ser positivo.");
+        if (costo < 0 || precio < 0) throw new DatosInvalidosException("Los montos no pueden ser negativos.");
+        if (destino == null || destino.trim().isEmpty()) throw new DatosInvalidosException("El destino es obligatorio.");
+
+        this.id = id;
+        this.destino = destino;
+        this.costoViaje = costo;
+        this.precioPasaje = precio;
+        this.bus = bus;
+        this.horario = horario;
+        this.pasajeros = new ArrayList<>();
+    }
 
     // ================= GETTERS =================
 
@@ -87,6 +88,12 @@ public class Viaje implements Serializable {
             this.precioPasaje = precioPasaje;
         }
     }
+    
+    public void setBus(Bus bus) {
+        if (bus != null) {
+            this.bus = bus;
+        }
+    }
 
     // ================= LÓGICA =================
 
@@ -98,11 +105,8 @@ public class Viaje implements Serializable {
 
     // agregar pasajero objeto
     public void agregarPasajero(Pasajero p) throws BusLlenoException {
-    
-    if (this.bus.getPasajeros().size() >= this.bus.getCapacidad()) {
-        throw new BusLlenoException("No se puede agregar: El bus " + bus.getPatente() + " alcanzó su límite.");
-    }
-    pasajeros.add(p);
+        bus.agregarPasajero(p); // primero validar capacidad
+        pasajeros.add(p);
     }
 
     public void eliminarPasajero(Pasajero p) {
@@ -132,10 +136,9 @@ public class Viaje implements Serializable {
     public String toString() {
         return "Viaje " + id +
                " | Destino: " + destino +
+               " | Bus: " + (bus != null ? bus.getPatente() : "No asignado") + // Mostrar patente
                " | Horario: " + horario +
                " | Pasajeros: " + pasajeros.size() +
-               " | Ingresos: " + calcularIngresos() +
-               " | Costo: " + costoViaje +
                " | Rentable: " + (esRentable() ? "SI" : "NO");
     }
 }
