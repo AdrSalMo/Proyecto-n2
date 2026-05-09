@@ -11,15 +11,19 @@ public class Main {
 
     public static void main(String[] args) {
 
-        Empresa empresa = new Empresa("Mi Empresa");
+    Empresa empresa = new Empresa("Mi Empresa");
 
-        try {
-            empresa.cargarDesdeCSV();
-            System.out.println("Datos iniciales cargados correctamente");
-            System.out.println("Buses cargados: " + empresa.cantidadBuses());
-            System.out.println("Viajes cargados: " + empresa.cantidadViajes());
-        } catch (Exception e) {
-            System.out.println("No se pudieron cargar los datos iniciales: " + e.getMessage());
+        // Primero intenta cargar lo que se haya editado antes
+        empresa.cargarDatos("datos.dat");
+
+        // Si no hay nada guardado (primera ejecución), carga los CSV originales
+        if (empresa.cantidadBuses() == 0) {
+            try {
+                empresa.cargarDesdeCSV();
+                System.out.println("Datos base cargados desde CSV.");
+            } catch (Exception e) {
+                System.out.println("Error en carga inicial: " + e.getMessage());
+            }
         }
 
         System.out.println("=================================");
